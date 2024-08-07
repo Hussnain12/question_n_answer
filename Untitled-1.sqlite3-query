@@ -1,0 +1,10 @@
+-- database: ./questions.db
+
+-- Use the ▷ button in the top right corner to run the entire file.
+
+SELECT q.id AS question_id, q.question_text, q.answer_text, q.asked_by_id, q.expert_id, u.name AS asked_by_name
+FROM questions q
+JOIN users u ON q.asked_by_id = u.id
+WHERE q.expert_id = 3;
+
+
