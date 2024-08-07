@@ -38,21 +38,21 @@ def index():
 
 @app.route('/register', methods=['POST', 'GET'])
 def register():
-    user=get_current_user()
+    user = get_current_user()
     db = get_db()
     if request.method == 'POST':
         name = request.form['name']
-        cur=db.execute('select id from users where name = ?',[name])
-        existing_user=cur.fetchone()
+        cur = db.execute('select id from users where name = ?', [name])
+        existing_user = cur.fetchone()
         if existing_user:
-            return render_template('register.html', user=user,error="User exists already")
+            return render_template('register.html', user=user, error="User exists already")
         hashed_password = generate_password_hash(
             request.form['password'], method='pbkdf2:sha512')
         db.execute('insert into users (name, password, expert, admin) values (?, ?, ?, ?)', [
                    name, hashed_password, '0', '0'])
         db.commit()
         return render_template('register.html', user=user)
-    return render_template('register.html',user=user)
+    return render_template('register.html', user=user)
 
 
 @app.route('/login', methods=['GET', 'POST'])
@@ -75,16 +75,22 @@ def login():
 
 @app.route('/question/<question_id>')
 def question(question_id):
-    user=get_current_user()
-    db=get_db()
-    cur = db.execute('select questions.question_text,questions.answer_text, askers.name as asker_name, experts.name as expert_name from questions join users as askers on askers.id = questions.asked_by_id join users as experts on experts.id = questions.expert_id where questions.id=? ',[question_id])
-    result=cur.fetchone()
-    return render_template('question.html',user=user,data=result)
+
+    user = get_current_user()
+    db = get_db()
+    cur = db.execute(
+        'select questions.question_text,questions.answer_text, askers.name as asker_name, experts.name as expert_name from questions join users as askers on askers.id = questions.asked_by_id join users as experts on experts.id = questions.expert_id where questions.id=? ', [question_id])
+    result = cur.fetchone()
+    return render_template('question.html', user=user, data=result)
 
 
 @app.route('/answer/<question_id>', methods=['POST', 'GET'])
 def answer(question_id):
     user = get_current_user()
+    if not user:
+        return redirect(url_for('login'))
+    if user['admin'] == 0:
+        return redirect(url_for('index'))
     db = get_db()
     cur = db.execute(
         'select id,question_text from questions where id=?', [question_id])
@@ -101,6 +107,8 @@ def answer(question_id):
 @app.route('/ask', methods=['POST', 'GET'])
 def ask():
     user = get_current_user()
+    if not user:
+        return redirect(url_for('login'))
     db = get_db()
     print(user['id'])
     if request.method == "POST":
@@ -121,18 +129,26 @@ def ask():
 @app.route('/unanswered')
 def unanswered():
     user = get_current_user()
+    if not user:
+        return redirect(url_for('login'))
+    if user['expert'] == 0:
+        return redirect(url_for('index'))
     db = get_db()
     cur = db.execute('''SELECT q.id AS question_id, q.question_text, q.answer_text, q.asked_by_id, q.expert_id, u.name AS asked_by_name
                FROM questions q
                JOIN users u ON q.asked_by_id=u.id
                WHERE q.expert_id=? AND q.answer_text == "" ''', [user['id']])
     results = cur.fetchall()
-    return render_template('unanswered.html', all_question=results,user=user)
+    return render_template('unanswered.html', all_question=results, user=user)
 
 
 @app.route('/users')
 def users():
     user = get_current_user()
+    if not user:
+        return redirect(url_for('login'))
+    if user['admin'] == 0:
+        return redirect(url_for('index'))
     db = get_db()
     cur = db.execute('select id, name, expert, admin from users')
     results = cur.fetchall()
@@ -147,6 +163,11 @@ def logout():
 
 @app.route('/promote/<user_id>')
 def promote(user_id):
+    user = get_current_user()
+    if not user:
+        return redirect(url_for('login'))
+    if user['admin'] == 0:
+        return redirect(url_for('index'))
     db = get_db()
     cur = db.execute('select expert from users where id = ?', [user_id])
     results = cur.fetchone()
