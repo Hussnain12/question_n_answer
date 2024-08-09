@@ -89,7 +89,7 @@ def answer(question_id):
     user = get_current_user()
     if not user:
         return redirect(url_for('login'))
-    if user['admin'] == 0:
+    if user['expert'] == 0:
         return redirect(url_for('index'))
     db = get_db()
     cur = db.execute(
@@ -131,8 +131,10 @@ def unanswered():
     user = get_current_user()
     if not user:
         return redirect(url_for('login'))
+    print(user['expert'])
     if user['expert'] == 0:
         return redirect(url_for('index'))
+    print('mein idr bund mara ra hn')
     db = get_db()
     cur = db.execute('''SELECT q.id AS question_id, q.question_text, q.answer_text, q.asked_by_id, q.expert_id, u.name AS asked_by_name
                FROM questions q
